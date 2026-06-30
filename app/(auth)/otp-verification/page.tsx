@@ -8,7 +8,8 @@ export default function OtpVerificationPage() {
   const router = useRouter()
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
   const [mobile, setMobile] = useState('')
-  const [otp, setOtp] = useState('')
+  // const [otp, setOtp] = useState('')
+  const [otp, setOtp] = useState('1234')
   const [loading, setLoading] = useState(false)
 
   const maskedMobile = mobile ? mobile.slice(0, 2) + '******' + mobile.slice(-2) : ''

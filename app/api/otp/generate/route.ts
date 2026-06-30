@@ -49,17 +49,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Phone number does not match your registered number' })
     }
 
-    const otp = Math.floor(1000 + Math.random() * 9000)
+    // Using default OTP "1234" for testing/development
+    const otp = 1234
 
     await query('UPDATE admin SET otp=?,updated_by=?,updated_on=? WHERE admin_id=?',
       [otp, userId, formatDatetime(), userId])
 
-    const sms = await sendSmsApi(mobile, otp)
-    if (!sms.success) {
-      return NextResponse.json({ success: false, message: `SMS Error: ${sms.error}` })
-    }
+    // Note: OTP is not being sent to phone number in this version
+    // const sms = await sendSmsApi(mobile, otp)
+    // if (!sms.success) {
+    //   return NextResponse.json({ success: false, message: `SMS Error: ${sms.error}` })
+    // }
 
-    return NextResponse.json({ success: true, message: 'OTP sent to your mobile number. Please enter the OTP.' })
+    return NextResponse.json({ success: true, message: 'OTP generated and saved to database. OTP: 1234' })
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message || 'Server error' }, { status: 500 })
   }

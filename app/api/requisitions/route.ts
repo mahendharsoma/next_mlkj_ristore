@@ -16,12 +16,65 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
+
+  if (!session) {
+    return NextResponse.json({ success: false }, { status: 401 })
+  }
+
+  const userId = (session.user as { id: string }).id
+
+  const {
+    product,
+    quantity,
+    reason_for_requisition,
+  } = await req.json()
+
+  if (!product || !reason_for_requisition) {
+    return NextResponse.json({
+      success: false,
+      message: 'Product and Reason are required.',
+    })
+  }
+
+  const result = await query<{ insertId: number }>(
+    `INSERT INTO requisitions
+    (
+      product,
+      quantity,
+      reason_for_requisition,
+      status,
+      created_by,
+      created_on
+    )
+    VALUES
+    (?, ?, ?, ?, ?, ?)`,
+    [
+      product,
+      quantity || 0,
+      reason_for_requisition,
+      'Requisition',
+      userId,
+      formatDatetime(),
+    ]
+  )
+
+  return NextResponse.json({
+    success: true,
+    message: 'Requisition created successfully.',
+    data: {
+      requisition_id: result.insertId,
+    },
+  })
+}
+
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false }, { status: 401 })
   const userId = (session.user as { id: string }).id
-  const { product, quantity, reason_for_requisition } = await req.json()
-  const result = await query<{ insertId: number }>(
-    'INSERT INTO requisitions(product,quantity,reason_for_requisition,status,created_by,created_on) VALUES(?,?,?,?,?,?)',
-    [product, quantity, reason_for_requisition, 'Requisition', userId, formatDatetime()]
+  const { requisition_id, product, quantity, reason_for_requisition } = await req.json()
+  await query(
+    'UPDATE requisitions SET product=?,quantity=?,reason_for_requisition=?,updated_by=?,updated_on=? WHERE requisition_id=?',
+    [product, quantity, reason_for_requisition, userId, formatDatetime(), requisition_id]
   )
-  return NextResponse.json({ success: true, data: { requisition_id: result.insertId } })
+  return NextResponse.json({ success: true })
 }

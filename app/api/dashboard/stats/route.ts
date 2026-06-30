@@ -11,11 +11,17 @@ export async function GET() {
     const [vendors] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM vendors')
     const [categories] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM category')
     const [products] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM products')
-    const [reqCount] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "Requisition"')
-    const [underCommittee] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status IN ("Permitted","Quotation")')
-    const [poPending] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status IN ("Committee","Approved")')
-    const [billsPending] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "PO"')
-    const [fileTransfer] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "File Transfer to Superdent Store"')
+    
+    // Requisition stats
+    const [reqTotal] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions')
+    const [reqPending] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "Requisition"')
+    const [reqPermitted] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "Permitted"')
+    const [reqRejected] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "Rejected"')
+    const [reqQuotation] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "Quotation"')
+    const [reqCommittee] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "Committee"')
+    const [reqApproved] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "Approved"')
+    const [reqPO] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "PO"')
+    const [reqCompleted] = await query<{ c: number }[]>('SELECT COUNT(*) as c FROM requisitions WHERE status = "File Transfer to Superintendent Store"')
 
     let lowStock: { product_name: string; available_stock: number }[] = []
     try {
@@ -33,8 +39,17 @@ export async function GET() {
       success: true,
       data: {
         staff: staff.c, vendors: vendors.c, categories: categories.c, products: products.c,
-        requisition: reqCount.c, underCommittee: underCommittee.c,
-        poPending: poPending.c, billsPending: billsPending.c, fileTransfer: fileTransfer.c,
+        requisitions: {
+          total: reqTotal.c,
+          pending: reqPending.c,
+          permitted: reqPermitted.c,
+          rejected: reqRejected.c,
+          quotation: reqQuotation.c,
+          committee: reqCommittee.c,
+          approved: reqApproved.c,
+          po: reqPO.c,
+          completed: reqCompleted.c,
+        },
         lowStock,
       }
     })

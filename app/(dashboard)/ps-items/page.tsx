@@ -37,9 +37,9 @@ export default function PSItemsPage() {
             <tr>
               <th className="px-4 py-3 text-left">#</th>
               <th className="px-4 py-3 text-left">Product</th>
-              <th className="px-4 py-3 text-left">Unit</th>
+              {/* <th className="px-4 py-3 text-left">Unit</th> */}
               <th className="px-4 py-3 text-left">Available Stock</th>
-              <th className="px-4 py-3 text-left">Condemned Stock</th>
+              {/* <th className="px-4 py-3 text-left">Condemned Stock</th> */}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -47,9 +47,9 @@ export default function PSItemsPage() {
               <tr key={item.ps_item_id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                 <td className="px-4 py-3 font-medium">{item.product_name}</td>
-                <td className="px-4 py-3 text-gray-600">{item.unit || '—'}</td>
+                {/* <td className="px-4 py-3 text-gray-600">{item.unit || '—'}</td> */}
                 <td className="px-4 py-3 font-semibold text-green-700">{item.stock ?? 0}</td>
-                <td className="px-4 py-3 font-semibold text-red-600">{item.condemned_stock ?? 0}</td>
+                {/* <td className="px-4 py-3 font-semibold text-red-600">{item.condemned_stock ?? 0}</td> */}
               </tr>
             ))}
             {items.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Select a PS / Department to view items</td></tr>}

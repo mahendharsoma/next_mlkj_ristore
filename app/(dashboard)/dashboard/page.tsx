@@ -6,7 +6,7 @@ import Link from 'next/link'
 interface LowStockItem { product_name: string; available_stock: number }
 interface Stats {
   staff: number; vendors: number; categories: number; products: number;
-  requisition: number; underCommittee: number; poPending: number; billsPending: number; fileTransfer: number;
+  requisitions: { total: number; pending: number; permitted: number; rejected: number; quotation: number; committee: number; approved: number; po: number; completed: number };
   lowStock: LowStockItem[];
 }
 
@@ -100,12 +100,18 @@ export default function DashboardPage() {
       </div>
       <div>
         <h2 className="text-lg font-semibold text-gray-700 mb-3">Requisitions Overview</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard label="New Requisitions" value={stats.requisition} icon={ClipboardList} color="bg-blue-400" href="/requisitions-by-status/Requisition" />
-          <StatCard label="Under Committee" value={stats.underCommittee} icon={Clock} color="bg-yellow-500" href="/requisitions" />
-          <StatCard label="PO Pending" value={stats.poPending} icon={FileCheck} color="bg-indigo-500" href="/requisitions" />
-          <StatCard label="Bills Pending" value={stats.billsPending} icon={Banknote} color="bg-pink-500" href="/requisitions" />
-          <StatCard label="File Transfer" value={stats.fileTransfer} icon={ArrowRight} color="bg-gray-500" href="/requisitions" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <StatCard label="Total" value={stats.requisitions.total} icon={ClipboardList} color="bg-blue-500" href="/requisitions" />
+          <StatCard label="Pending" value={stats.requisitions.pending} icon={Clock} color="bg-amber-500" href="/requisitions" />
+          <StatCard label="Permitted" value={stats.requisitions.permitted} icon={FileCheck} color="bg-emerald-500" href="/requisitions" />
+          <StatCard label="Rejected" value={stats.requisitions.rejected} icon={X} color="bg-red-500" href="/requisitions" />
+          <StatCard label="Completed" value={stats.requisitions.completed} icon={ArrowRight} color="bg-green-500" href="/requisitions" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+          <StatCard label="Quotation" value={stats.requisitions.quotation} icon={Banknote} color="bg-purple-500" href="/requisitions" />
+          <StatCard label="Committee" value={stats.requisitions.committee} icon={Users} color="bg-indigo-500" href="/requisitions" />
+          <StatCard label="Approved" value={stats.requisitions.approved} icon={FileCheck} color="bg-teal-500" href="/requisitions" />
+          <StatCard label="PO" value={stats.requisitions.po} icon={Package} color="bg-orange-500" href="/requisitions" />
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -115,7 +121,6 @@ export default function DashboardPage() {
             {[
               { label: 'Add Indent', href: '/indents' }, { label: 'Add Requisition', href: '/requisitions' },
               { label: 'Purchase Orders', href: '/purchase-orders' }, { label: 'Inventory', href: '/inventory-stock' },
-              { label: 'Wing Users', href: '/wing-users' }, { label: 'Condemnation', href: '/condemnation' },
               { label: 'PS Items', href: '/ps-items' }, { label: 'Total Inventory', href: '/total-inventory' },
             ].map(l => (
               <Link key={l.href} href={l.href}

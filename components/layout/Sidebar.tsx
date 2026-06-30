@@ -7,12 +7,20 @@ import {
   Building2, ShoppingCart, Warehouse, ClipboardList,
   FileText, ArrowRightLeft, Flame, BarChart3,
   ChevronDown, ChevronRight, Package2, X, MapPin,
+  type LucideIcon,
 } from 'lucide-react'
 
-const navItems = [
+type NavItem = {
+  label: string
+  href?: string
+  icon: LucideIcon
+  children?: Array<{ label: string; href: string }>
+}
+
+const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Staff', href: '/staff', icon: Users },
-  { label: 'Roles', href: '/roles', icon: ShieldCheck },
+  // { label: 'Roles', href: '/roles', icon: ShieldCheck },
   { label: 'Categories', href: '/categories', icon: Tags },
   { label: 'Products', href: '/products', icon: Package },
   { label: 'Vendors', href: '/vendors', icon: Truck },
@@ -69,7 +77,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
           <div className="flex items-center gap-2">
             <Package className="w-7 h-7 text-blue-400" />
-            <span className="font-bold text-white text-lg">Stock Mgmt</span>
+            <span className="font-bold text-white text-lg">Stock Management</span>
           </div>
           <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
@@ -79,7 +87,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           {navItems.map(item => {
             if (item.children) {
               const isOpen = expanded.includes(item.label)
-              const anyChildActive = item.children.some(c => isActive(c.href))
+              const anyChildActive = item.children.some(child => isActive(child.href))
               return (
                 <div key={item.label}>
                   <button onClick={() => toggle(item.label)}
@@ -104,10 +112,12 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                 </div>
               )
             }
+            if (!item.href) return null
+
             return (
-              <Link key={item.href} href={item.href!}
+              <Link key={item.href} href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition
-                  ${isActive(item.href!) ? 'bg-blue-600 text-white' : 'hover:bg-slate-700 text-slate-300'}`}>
+                  ${isActive(item.href) ? 'bg-blue-600 text-white' : 'hover:bg-slate-700 text-slate-300'}`}>
                 <item.icon className="w-4 h-4" />{item.label}
               </Link>
             )

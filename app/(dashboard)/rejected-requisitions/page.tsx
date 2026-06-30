@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
+import { toast } from 'sonner'
 import PageHeader from '@/components/ui/PageHeader'
 
 interface Req { requisition_id: number; product: string; quantity: number; reason_for_requisition: string; status: string; vendor_name: string; created_on: string }
@@ -11,16 +12,35 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function RejectedRequisitionsPage() {
   const [items, setItems] = useState<Req[]>([])
+  const [showReopenModal, setShowReopenModal] = useState(false)
+  const [reopeningId, setReopeningId] = useState<number | null>(null)
 
   const load = () => fetch('/api/requisitions?status=Rejected').then(r => r.json()).then(d => { if (d.success) setItems(d.data) })
 
   useEffect(() => { load() }, [])
 
   const restore = async (id: number) => {
-    await fetch(`/api/requisitions/${id}/status`, {
+    const res = await fetch(`/api/requisitions/${id}/status`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'Requisition' })
     })
-    load()
+    const d = await res.json()
+    if (d.success) {
+      toast.success('Requisition status has been changed successfully.')
+      load()
+    }
+  }
+
+  const openReopenModal = (id: number) => {
+    setReopeningId(id)
+    setShowReopenModal(true)
+  }
+
+  const confirmReopen = () => {
+    if (reopeningId) {
+      restore(reopeningId)
+      setShowReopenModal(false)
+      setReopeningId(null)
+    }
   }
 
   return (
@@ -47,7 +67,7 @@ export default function RejectedRequisitionsPage() {
                 <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{r.reason_for_requisition}</td>
                 <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] || 'bg-gray-100 text-gray-700'}`}>{r.status}</span></td>
                 <td className="px-4 py-3">
-                  <button onClick={() => restore(r.requisition_id)} className="text-blue-500 hover:text-blue-700"><Pencil className="w-4 h-4" /></button>
+                  <button onClick={() => openReopenModal(r.requisition_id)} className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-700 transition font-medium">Reopen</button>
                 </td>
               </tr>
             ))}
@@ -55,6 +75,32 @@ export default function RejectedRequisitionsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Reopen Confirmation Modal */}
+      {showReopenModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-semibold mb-4">Reopen Requisition</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to change the status of this requisition from <strong>Rejected</strong> to <strong>Requisition</strong>?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={confirmReopen}
+                className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setShowReopenModal(false)}
+                className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
