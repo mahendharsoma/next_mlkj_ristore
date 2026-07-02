@@ -1,24 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { query, formatDatetime } from '@/lib/db'
+import {
+  clearPendingLoginCookie,
+  createLoginToken,
+  getPendingLogin,
+  OTP_EXPIRY_SECONDS,
+} from '@/lib/pending-login'
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
-    const userId = (session.user as { id: string }).id
-    const { otp } = await req.json()
-    if (!otp) return NextResponse.json({ success: false, message: 'Enter OTP' })
-    const rows = await query<{ otp: string | null }[]>('SELECT otp FROM admin WHERE admin_id=?', [userId])
-    if (!rows.length) return NextResponse.json({ success: false, message: 'User not found' })
-    if (String(rows[0].otp) !== String(otp)) {
-      return NextResponse.json({ success: false, message: 'Incorrect OTP, please check and try again' })
+    const pending = await getPendingLogin()
+    if (!pending) {
+      return NextResponse.json(
+        { success: false, message: 'Login session expired. Please sign in again.' },
+        { status: 401 }
+      )
     }
-    await query('UPDATE admin SET otp=NULL,updated_by=?,updated_on=? WHERE admin_id=?',
-      [userId, formatDatetime(), userId])
-    return NextResponse.json({ success: true, message: 'Mobile verified successfully' })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, message: err.message || 'Server error' }, { status: 500 })
+
+    if (!pending.otpSentAt) {
+      return NextResponse.json({
+        success: false,
+        message: 'No OTP found. Please request a new OTP.',
+      })
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    if (now - pending.otpSentAt > OTP_EXPIRY_SECONDS) {
+      return NextResponse.json({
+        success: false,
+        message: 'OTP has expired. Please request a new OTP.',
+        expired: true,
+      })
+    }
+
+    const { otp } = await req.json()
+    if (!otp || !/^\d{4}$/.test(String(otp))) {
+      return NextResponse.json({ success: false, message: 'Enter a valid 4-digit OTP' })
+    }
+
+    const userId = pending.adminId
+    const rows = await query<{ otp: number | null }[]>(
+      'SELECT otp FROM admin WHERE admin_id=?',
+      [userId]
+    )
+    if (!rows.length) {
+      return NextResponse.json({ success: false, message: 'User not found' })
+    }
+
+    if (String(rows[0].otp) !== String(otp)) {
+      return NextResponse.json({
+        success: false,
+        message: 'Incorrect OTP. Please check and try again.',
+      })
+    }
+
+    await query(
+      'UPDATE admin SET otp=NULL, updated_by=?, updated_on=? WHERE admin_id=?',
+      [userId, formatDatetime(), userId]
+    )
+
+    const loginToken = createLoginToken(pending.adminId, pending.email)
+    await clearPendingLoginCookie()
+
+    return NextResponse.json({
+      success: true,
+      message: 'Mobile verified successfully!',
+      loginToken,
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Server error'
+    return NextResponse.json({ success: false, message }, { status: 500 })
   }
 }

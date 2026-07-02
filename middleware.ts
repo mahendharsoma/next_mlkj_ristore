@@ -1,7 +1,7 @@
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
 
-const publicPaths = ['/login', '/forgot-password', '/reset-password']
+const publicPaths = ['/login', '/forgot-password', '/reset-password', '/otp-verification']
 
 export default withAuth(
   function middleware(req) {
@@ -14,12 +14,12 @@ export default withAuth(
         : NextResponse.redirect(new URL('/login', req.url))
     }
 
-    if (token && publicPaths.some(path => pathname === path || pathname.startsWith(`${path}/`))) {
+    if (token && (pathname === '/login' || pathname.startsWith('/login/'))) {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
-    if (!token && pathname === '/otp-verification') {
-      return NextResponse.redirect(new URL('/login', req.url))
+    if (token && (pathname === '/otp-verification' || pathname.startsWith('/otp-verification/'))) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
     return NextResponse.next()
@@ -28,7 +28,9 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl
-        const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(`${path}/`))
+        const isPublicPath = publicPaths.some(
+          path => pathname === path || pathname.startsWith(`${path}/`)
+        )
         return pathname === '/' || isPublicPath || !!token
       },
     },

@@ -8,7 +8,7 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false }, { status: 401 })
   const rows = await query(
-    `SELECT a.admin_id, a.name, a.email, a.phone, a.status, a.created_on,
+    `SELECT a.admin_id, a.name, a.email,a.password, a.phone, a.status, a.created_on,
       GROUP_CONCAT(r.role_name SEPARATOR ', ') as roles,
       GROUP_CONCAT(r.role_id SEPARATOR ',') as role_ids
      FROM admin a

@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Package, Phone, ShieldCheck, CheckCircle2, ArrowLeft } from 'lucide-react'
 
@@ -8,58 +9,126 @@ export default function OtpVerificationPage() {
   const router = useRouter()
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
   const [mobile, setMobile] = useState('')
-  // const [otp, setOtp] = useState('')
-  const [otp, setOtp] = useState('1234')
+  const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   const maskedMobile = mobile ? mobile.slice(0, 2) + '******' + mobile.slice(-2) : ''
 
-  const sendOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const checkPendingAuth = useCallback(async () => {
+    const res = await fetch('/api/auth/pending-status')
+    const data = await res.json()
+    if (!data.authenticated) {
+      router.replace('/login')
+      return false
+    }
+    if (data.mobile) setMobile(data.mobile)
+    if (data.hasOtp) setStep('otp')
+    if (data.resendCooldown > 0) setResendCooldown(data.resendCooldown)
+    return true
+  }, [router])
+
+  useEffect(() => {
+    checkPendingAuth().finally(() => setCheckingAuth(false))
+  }, [checkPendingAuth])
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown(prev => (prev <= 1 ? 0 : prev - 1))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
+  const sendOtp = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (!/^\d{10}$/.test(mobile)) return toast.error('Enter a valid 10-digit mobile number')
     setLoading(true)
-    const res = await fetch('/api/otp/generate', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile })
-    })
-    const d = await res.json()
-    setLoading(false)
-    if (d.success) { toast.success(d.message); setStep('otp') }
-    else toast.error(d.message || 'Error sending OTP')
+    try {
+      const res = await fetch('/api/otp/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(data.message)
+        setStep('otp')
+        setOtp('')
+        setResendCooldown(data.resendCooldown ?? 60)
+      } else {
+        toast.error(data.message || 'Error sending OTP')
+        if (data.resendCooldown) setResendCooldown(data.resendCooldown)
+        if (res.status === 401) router.replace('/login')
+      }
+    } catch {
+      toast.error('Unable to send OTP. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const verifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!otp || otp.length < 4) return toast.error('Enter 4-digit OTP')
     setLoading(true)
-    const res = await fetch('/api/otp/verify', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ otp })
-    })
-    const d = await res.json()
-    setLoading(false)
-    if (d.success) { toast.success('Mobile verified successfully!'); router.push('/dashboard') }
-    else toast.error(d.message || 'Invalid OTP')
+    try {
+      const res = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp }),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        toast.error(data.message || 'Invalid OTP')
+        if (data.expired) setOtp('')
+        if (res.status === 401) router.replace('/login')
+        return
+      }
+
+      const signInRes = await signIn('credentials', {
+        loginToken: data.loginToken,
+        redirect: false,
+      })
+
+      if (signInRes?.ok) {
+        toast.success('Login successful!')
+        router.push('/dashboard')
+      } else {
+        toast.error('Unable to complete login. Please sign in again.')
+        router.replace('/login')
+      }
+    } catch {
+      toast.error('Verification failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const resendOtp = async () => {
+    if (resendCooldown > 0) return
     setOtp('')
-    setLoading(true)
-    const res = await fetch('/api/otp/generate', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile })
-    })
-    const d = await res.json()
-    setLoading(false)
-    if (d.success) toast.success('OTP resent successfully')
-    else toast.error(d.message || 'Failed to resend OTP')
+    await sendOtp()
+  }
+
+  const backToLogin = async () => {
+    await fetch('/api/auth/cancel-pending', { method: 'POST' })
+    router.replace('/login')
+  }
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-sm">Loading...</div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
 
-        {/* Top Banner */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 flex flex-col items-center">
           <div className="bg-white/20 p-3 rounded-full mb-3">
             <Package className="text-white w-7 h-7" />
@@ -68,7 +137,6 @@ export default function OtpVerificationPage() {
           <p className="text-blue-100 text-xs mt-1">Stock Management System</p>
         </div>
 
-        {/* Step Indicator */}
         <div className="flex items-center px-8 py-4 bg-gray-50 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step === 'phone' ? 'bg-blue-600 text-white' : 'bg-green-500 text-white'}`}>
@@ -119,12 +187,17 @@ export default function OtpVerificationPage() {
                   </span>
                 ) : 'Send OTP →'}
               </button>
+              <button type="button" onClick={backToLogin}
+                className="w-full text-xs text-gray-500 hover:text-blue-600 transition">
+                ← Back to login
+              </button>
             </form>
           ) : (
             <form onSubmit={verifyOtp} className="space-y-5">
               <div className="text-center mb-2">
                 <p className="text-sm text-gray-500">OTP sent to</p>
                 <p className="text-base font-semibold text-gray-800 mt-0.5">+91 {maskedMobile}</p>
+                <p className="text-xs text-gray-400 mt-1">OTP expires in 5 minutes</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Enter 4-digit OTP</label>
@@ -156,9 +229,9 @@ export default function OtpVerificationPage() {
                   className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition">
                   <ArrowLeft className="w-3.5 h-3.5" /> Change number
                 </button>
-                <button type="button" onClick={resendOtp} disabled={loading}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline disabled:opacity-50 transition">
-                  Resend OTP
+                <button type="button" onClick={resendOtp} disabled={loading || resendCooldown > 0}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline disabled:opacity-50 disabled:no-underline transition">
+                  {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
                 </button>
               </div>
             </form>

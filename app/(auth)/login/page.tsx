@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Package } from 'lucide-react'
@@ -15,12 +14,23 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    const res = await signIn('credentials', { email, password, redirect: false })
-    setLoading(false)
-    if (res?.ok) {
-      router.push('/otp-verification')
-    } else {
-      toast.error('Invalid email or password')
+    try {
+      const res = await fetch('/api/auth/validate-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(data.message || 'Credentials verified')
+        router.push('/otp-verification')
+      } else {
+        toast.error(data.message || 'Invalid email or password')
+      }
+    } catch {
+      toast.error('Unable to sign in. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -67,13 +77,9 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Verifying...' : 'Continue'}
           </button>
         </form>
-        {/* <div className="mt-4 text-center">
-          <a href="/forgot-password" className="text-sm text-blue-600 hover:underline">Forgot password?</a>
-        </div> */}
-        
       </div>
     </div>
   )

@@ -83,7 +83,7 @@ export default function StaffPage() {
                 <th className="px-4 py-3 text-left">#</th>
                 <th className="px-4 py-3 text-left">Name</th>
                 <th className="px-4 py-3 text-left">Email</th>
-                
+                <th className="px-4 py-3 text-left">Password</th>
                 <th className="px-4 py-3 text-left">Phone</th>
                 <th className="px-4 py-3 text-left">Roles</th>
                 <th className="px-4 py-3 text-left">Status</th>
@@ -96,6 +96,7 @@ export default function StaffPage() {
                   <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                   <td className="px-4 py-3 font-medium text-gray-800">{s.name}</td>
                   <td className="px-4 py-3 text-gray-600">{s.email}</td>
+                  <td className="px-4 py-3 text-gray-600">{s.password}</td>
                   <td className="px-4 py-3 text-gray-600">{s.phone}</td>
                   <td className="px-4 py-3 text-gray-600">{s.roles || '—'}</td>
                   <td className="px-4 py-3">
